@@ -386,7 +386,7 @@
 </main>
 
 <footer>
-  Configurable format mockup · Min. 5 correct to unlock final guess · Quiz library is saved to your account and persists across sessions
+  Configurable format mockup · Min. 5 correct to unlock final guess · Quiz library is saved in this browser and persists across visits (clearing browser data will erase it)
 </footer>
 
 <script>
@@ -706,8 +706,8 @@ let currentEditingId = null;
 
 async function loadLibrary(){
   try{
-    const res = await window.storage.get(LIBRARY_KEY, false);
-    library = res && res.value ? JSON.parse(res.value) : [];
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    library = raw ? JSON.parse(raw) : [];
   } catch(err){
     library = [];
   }
@@ -716,11 +716,10 @@ async function loadLibrary(){
 
 async function persistLibrary(){
   try{
-    const result = await window.storage.set(LIBRARY_KEY, JSON.stringify(library), false);
-    if(!result) throw new Error('Storage write returned no result');
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
     return true;
   } catch(err){
-    alert('Could not save to your library right now — please try again.');
+    alert('Could not save to your library right now — your browser may be blocking local storage (e.g. private/incognito mode). Please try again in normal browsing mode.');
     return false;
   }
 }
