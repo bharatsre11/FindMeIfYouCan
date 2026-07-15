@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Me If You Can</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#150C29;
+    --bg-deep:#0D0720;
+    --card:#1F1440;
+    --card-edge:#332259;
+    --gold:#F4B942;
+    --gold-dim:#8A6F2A;
+    --rose:#C6427E;
+    --green:#3ECF8E;
+    --red:#FF5D5D;
+    --ink:#F5E9D8;
+    --muted:#B8A9D9;
+    --mono:'JetBrains Mono', monospace;
+    --display:'Yatra One', cursive;
+    --body:'Poppins', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(244,185,66,0.16), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 10%, rgba(198,66,126,0.12), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    line-height:1.5;
+    padding-bottom:80px;
+  }
+  a{color:inherit;}
+
+  .curtain-strip{
+    height:14px;
+    background:repeating-linear-gradient(90deg, var(--rose) 0 26px, var(--gold) 26px 52px);
+    opacity:0.85;
+  }
+  header.hero{
+    position:relative; text-align:center; padding:56px 20px 44px;
+    overflow:hidden; border-bottom:1px solid var(--card-edge);
+  }
+  .spotlight{
+    position:absolute; top:-200px; left:50%; width:900px; height:600px;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(244,185,66,0.22), transparent 65%);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:var(--mono); letter-spacing:0.35em; font-size:11px;
+    color:var(--gold); text-transform:uppercase; position:relative;
+  }
+  h1.title{
+    font-family:var(--display); font-size:clamp(34px, 6.5vw, 60px);
+    margin:14px 0 6px; color:var(--ink); position:relative;
+    text-shadow:0 0 40px rgba(244,185,66,0.35);
+  }
+  h1.title span{color:var(--gold);}
+  .subtitle{color:var(--muted); font-size:14.5px; position:relative; max-width:480px; margin:0 auto;}
+  .mode-pill{
+    display:inline-block; margin-top:16px;
+    font-family:var(--mono); font-size:11px; letter-spacing:0.15em;
+    color:var(--bg-deep); background:var(--gold);
+    padding:5px 14px; border-radius:20px; position:relative;
+  }
+
+  main{max-width:660px;margin:0 auto;padding:0 20px;}
+  section{margin-top:40px;}
+
+  .section-label{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.25em;
+    text-transform:uppercase; color:var(--rose); margin-bottom:10px;
+  }
+  .section-label-row{display:flex; align-items:center; justify-content:space-between;}
+
+  .field{margin-bottom:18px;}
+  .field label{
+    display:block; font-family:var(--mono); font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;
+  }
+  .field .hint{font-size:11.5px; color:var(--muted); margin-top:4px; font-family:var(--body);}
+  input[type=text], textarea{
+    width:100%; background:var(--bg-deep); border:1px solid var(--card-edge);
+    border-radius:5px; padding:11px 13px; color:var(--ink);
+    font-family:var(--body); font-size:14px;
+  }
+  textarea{resize:vertical; min-height:64px; font-family:var(--display); font-size:15px;}
+  input[type=text]:focus, textarea:focus{outline:none; border-color:var(--gold);}
+  input.field-error, textarea.field-error{border-color:var(--red);}
+
+  .card{background:var(--card); border:1px solid var(--card-edge); border-radius:6px; padding:22px 24px;}
+
+  .q-editor{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:6px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .qe-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .q-editor .qe-title{font-family:var(--mono); font-size:12px; color:var(--rose);}
+  .opt-row{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .opt-row input[type=radio]{accent-color: var(--gold); width:16px; height:16px; flex-shrink:0;}
+  .opt-row input[type=text]{flex:1;}
+  .opt-row .opt-label{font-family:var(--mono); font-size:11px; color:var(--muted); width:16px;}
+
+  .btn{
+    font-family:var(--body); font-weight:600; font-size:13px;
+    border:none; border-radius:5px; padding:11px 20px; cursor:pointer;
+    transition:opacity .15s ease;
+  }
+  .btn:hover{opacity:0.85;}
+  .btn-gold{background:var(--gold); color:var(--bg-deep);}
+  .btn-ghost{background:transparent; border:1px solid var(--card-edge); color:var(--muted);}
+  .btn-outline-rose{background:transparent; border:1px solid var(--rose); color:var(--rose);}
+  .btn-sm{padding:7px 12px; font-size:12px;}
+  .btn:disabled{opacity:0.35; cursor:not-allowed;}
+  .btn-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:22px;}
+
+  .error-banner{
+    background:rgba(255,93,93,0.1); border:1px solid var(--red); color:var(--red);
+    padding:12px 16px; border-radius:5px; font-size:13px; margin-top:16px; display:none;
+  }
+  .status-msg{
+    font-family:var(--mono); font-size:12px; color:var(--green);
+    margin-top:10px; display:none;
+  }
+
+  /* ---------- LIBRARY ---------- */
+  .lib-empty{
+    font-family:var(--mono); font-size:12.5px; color:var(--muted);
+    padding:16px; border:1px dashed var(--card-edge); border-radius:5px;
+  }
+  .lib-item{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:6px;
+    padding:14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .lib-item.editing-active{border-color:var(--gold);}
+  .lib-item-name{font-weight:600; font-size:14.5px;}
+  .lib-item-meta{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:2px;}
+  .lib-item-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .editing-tag{
+    font-family:var(--mono); font-size:11px; color:var(--gold);
+    border:1px solid var(--gold-dim); padding:3px 10px; border-radius:14px;
+  }
+
+  /* ---------- QUESTION SELECTION SCREEN ---------- */
+  .select-item{
+    display:flex; align-items:flex-start; gap:12px;
+    padding:12px 0; border-bottom:1px solid var(--card-edge);
+  }
+  .select-item:last-child{border-bottom:none;}
+  .select-item input[type=checkbox]{
+    accent-color: var(--gold); width:18px; height:18px; margin-top:2px; flex-shrink:0;
+  }
+  .select-item.disabled-check{opacity:0.4;}
+  .select-item-text{font-size:14px;}
+  .select-item-num{font-family:var(--mono); font-size:11px; color:var(--rose); margin-right:6px;}
+  .select-counter{
+    font-family:var(--mono); font-size:13px; color:var(--gold);
+    margin-bottom:14px;
+  }
+  .select-counter.complete{color:var(--green);}
+
+  /* ---------- SHAYARI CARD (play view) ---------- */
+  .shayari-card{
+    background:linear-gradient(160deg, var(--card), var(--bg-deep));
+    border:1px solid var(--card-edge); border-left:3px solid var(--gold);
+    border-radius:6px; padding:28px 30px;
+  }
+  .shayari-text{
+    font-family:var(--display); font-size:21px; line-height:1.85;
+    color:var(--ink); font-style:italic; white-space:pre-line;
+  }
+  .shayari-text .en{
+    display:block; margin-top:14px; font-family:var(--body);
+    font-style:normal; font-size:13px; color:var(--muted); white-space:normal;
+  }
+
+  .status-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:36px;}
+  .progress-dots{display:flex;gap:6px; flex-wrap:wrap;}
+  .dot{width:11px;height:11px;border-radius:50%; background:var(--card-edge); transition:all .25s ease;}
+  .dot.correct{background:var(--green); box-shadow:0 0 8px rgba(62,207,142,0.6);}
+  .dot.wrong{background:var(--red); box-shadow:0 0 8px rgba(255,93,93,0.6);}
+  .dot.current{outline:2px solid var(--gold); outline-offset:2px;}
+  .tokens{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .diya{width:14px;height:14px;border-radius:50%; background:var(--gold); box-shadow:0 0 10px rgba(244,185,66,0.7);}
+  .diya.spent{background:var(--card-edge); box-shadow:none;}
+  .score-pill{
+    font-family:var(--mono); font-size:13px; color:var(--gold);
+    border:1px solid var(--gold-dim); padding:4px 12px; border-radius:20px;
+  }
+
+  .q-card{background:var(--card); border:1px solid var(--card-edge); border-radius:6px; padding:26px 26px 22px; margin-top:14px;}
+  .q-number{font-family:var(--mono); font-size:12px; color:var(--rose); margin-bottom:8px;}
+  .q-text{font-size:17px; font-weight:500; margin-bottom:20px;}
+  .options{display:grid; gap:10px;}
+  .option{
+    text-align:left; background:var(--bg-deep); border:1px solid var(--card-edge);
+    color:var(--ink); padding:13px 16px; border-radius:5px; font-family:var(--body);
+    font-size:14.5px; cursor:pointer; transition:border-color .15s ease;
+  }
+  .option:hover:not(:disabled){border-color:var(--gold);}
+  .option:disabled{cursor:default;}
+  .option.correct-answer{border-color:var(--green); background:rgba(62,207,142,0.1); color:var(--green);}
+  .option.wrong-answer{border-color:var(--red); background:rgba(255,93,93,0.1); color:var(--red);}
+  .option.dim{opacity:0.45;}
+
+  .feedback-row{display:flex; align-items:center; justify-content:space-between; margin-top:18px; flex-wrap:wrap; gap:10px;}
+  .feedback-tag{font-family:var(--mono); font-size:12px; letter-spacing:0.05em;}
+  .feedback-tag.correct{color:var(--green);}
+  .feedback-tag.wrong{color:var(--red);}
+  .timer-note{font-family:var(--mono); font-size:11px; color:var(--muted);}
+
+  .tier-table{width:100%; border-collapse:collapse; margin-top:14px; font-size:14px;}
+  .tier-table td, .tier-table th{padding:11px 10px; border-bottom:1px solid var(--card-edge); text-align:left;}
+  .tier-table th{font-family:var(--mono); font-size:11px; letter-spacing:0.1em; color:var(--muted); text-transform:uppercase;}
+  .tier-table tr.achieved td{color:var(--gold); font-weight:600;}
+  .tier-table tr.achieved{background:rgba(244,185,66,0.06);}
+
+  .final-card{
+    background:linear-gradient(160deg, var(--card), var(--bg-deep));
+    border:1px solid var(--gold-dim); border-radius:6px; padding:26px; margin-top:14px;
+  }
+  .final-input-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .final-input-row input[type=text]{flex:1; min-width:200px; font-family:var(--body); font-size:14px;}
+
+  .win-banner{
+    text-align:center; padding:30px 20px; margin-top:14px;
+    background:radial-gradient(ellipse at center, rgba(244,185,66,0.15), transparent 70%);
+    border:1px solid var(--gold); border-radius:6px;
+  }
+  .win-banner .amount{font-family:var(--display); font-size:36px; color:var(--gold);}
+  .lose-banner{
+    text-align:center; padding:24px 20px; margin-top:14px;
+    border:1px solid var(--card-edge); border-radius:6px; color:var(--muted);
+  }
+  .locked-note{
+    font-family:var(--mono); font-size:12.5px; color:var(--muted);
+    padding:14px 16px; border:1px dashed var(--card-edge); border-radius:5px; margin-top:14px;
+  }
+
+  footer{
+    max-width:660px; margin:60px auto 0; padding:20px;
+    border-top:1px solid var(--card-edge); color:var(--muted); font-size:12px; text-align:center;
+  }
+
+  #playView, #selectView{display:none;}
+</style>
+</head>
+<body>
+
+<div class="curtain-strip"></div>
+<header class="hero">
+  <div class="spotlight"></div>
+  <div class="eyebrow">A Mystery Item Quiz Show</div>
+  <h1 class="title">Find Me <span>If You Can</span></h1>
+  <p class="subtitle">10 questions. 3 tokens. One truth waiting to be named.</p>
+  <div class="mode-pill" id="modePill">SET-UP MODE</div>
+</header>
+
+<main>
+
+  <!-- ============ SETUP VIEW ============ -->
+  <div id="setupView">
+
+    <section>
+      <div class="section-label-row">
+        <div class="section-label">Your Quiz Library</div>
+        <span id="editingTag" class="editing-tag" style="display:none;"></span>
+      </div>
+      <div id="libraryList"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-ghost btn-sm" id="newQuizBtn">+ New Quiz</button>
+        <button class="btn btn-ghost btn-sm" id="exportExcelBtn">⬇️ Export to Excel</button>
+        <button class="btn btn-ghost btn-sm" id="importExcelBtn">⬆️ Import from Excel</button>
+        <input type="file" id="importExcelInput" accept=".xlsx,.xls" style="display:none;">
+      </div>
+      <div class="hint" style="margin-top:8px;">Export gives you a real .xlsx file (Items + Questions sheets) — open it in Excel, or upload to Google Drive and open with Google Sheets. Import reads that same format back in.</div>
+    </section>
+
+    <section>
+      <div class="section-label">Step 1 · The Item</div>
+      <div class="card">
+        <div class="field">
+          <label>Item name (shown to the host only — never on screen)</label>
+          <input type="text" id="itemName" placeholder="e.g. Air Conditioning">
+        </div>
+        <div class="field">
+          <label>Accepted final-guess answers (comma separated)</label>
+          <input type="text" id="acceptedAnswers" placeholder="e.g. air conditioning, air conditioner, ac">
+          <div class="hint">The contestant's final guess is checked (case-insensitive) against this list.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">Step 2 · The Whisper (Shayari / Riddle)</div>
+      <div class="card">
+        <div class="field">
+          <label>Riddle lines</label>
+          <textarea id="whisperMain" placeholder="Write 2-4 poetic lines — mood or theme only, never a direct clue."></textarea>
+        </div>
+        <div class="field">
+          <label>Optional one-line explainer (shown smaller, in plain language)</label>
+          <input type="text" id="whisperSub" placeholder="e.g. A riddle for the guesser — mood, not clues.">
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">Step 3 · Question Pool</div>
+      <div class="hint" style="margin-bottom:14px;">Add as many questions as you like — you'll pick exactly 10 to play right before the show starts.</div>
+      <div id="questionEditors"></div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn btn-ghost btn-sm" id="addQuestionBtn">+ Add Question</button>
+      </div>
+    </section>
+
+    <div class="error-banner" id="errorBanner"></div>
+    <div class="status-msg" id="statusMsg"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-gold" id="startShowBtn">Start Show ▶</button>
+      <button class="btn btn-ghost" id="saveLibraryBtn">💾 Save to Library</button>
+      <button class="btn btn-ghost" id="loadSampleBtn">Load Sample (Air Conditioning)</button>
+      <button class="btn btn-ghost" id="loadSample2Btn">Load Sample 2 (AC — Fun Edition)</button>
+      <button class="btn btn-outline-rose" id="clearAllBtn">Clear Fields</button>
+    </div>
+  </div>
+
+  <!-- ============ SELECTION VIEW ============ -->
+  <div id="selectView">
+    <section>
+      <div class="section-label">Pick 10 Questions for This Show</div>
+      <div class="card">
+        <div class="select-counter" id="selectCounter">Selected: 0 / 10</div>
+        <div id="selectList"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gold" id="confirmSelectionBtn" disabled>Start Show ▶</button>
+        <button class="btn btn-ghost" id="backToSetupFromSelectBtn">← Back to Setup</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ PLAY VIEW ============ -->
+  <div id="playView">
+
+    <section>
+      <div class="section-label">The Whisper</div>
+      <div class="shayari-card">
+        <div class="shayari-text" id="shayariText"></div>
+      </div>
+    </section>
+
+    <section id="quiz-section">
+      <div class="status-bar">
+        <div class="progress-dots" id="progressDots"></div>
+        <div class="tokens" id="tokenRow"></div>
+        <div class="score-pill" id="scorePill">0 pts</div>
+      </div>
+      <div class="q-card" id="qCard"></div>
+    </section>
+
+    <section id="results-section" style="display:none;">
+      <div class="section-label">Round Result</div>
+      <div class="q-card" id="resultSummary"></div>
+      <table class="tier-table" id="tierTable">
+        <tr><th>MCQs Correct</th><th>Reward</th></tr>
+      </table>
+      <div id="finalGuessArea"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-gold" id="newItemBtn">🔁 Back to Setup / Library</button>
+      </div>
+    </section>
+
+  </div>
+
+</main>
+
+<footer>
+  Configurable format mockup · Min. 5 correct to unlock final guess · Quiz library is saved to your account and persists across sessions
+</footer>
+
+<script>
+/* ---------------- SAMPLE DATA ---------------- */
+const SAMPLE = {
+  itemName: "Air Conditioning",
+  acceptedAnswers: "air conditioning, air conditioner, ac",
+  whisperMain: "Garmi mein main sukoon banaata,\nThandi hawa ka raaz hoon.\nChaar deewaari ke andar bhi,\nMausam badalne ka andaaz hoon.",
+  whisperSub: "A riddle for the guesser — mood, not clues. The item is locked in.",
+  questions: [
+    {q:"This item most commonly works using a cycle involving compression and expansion of a gas. What is this cycle called?",
+     options:["Otto cycle","Refrigeration cycle","Carnot engine cycle","Combustion cycle"], correct:1},
+    {q:"Which chemical was historically the most common refrigerant used in this item, before being phased out over ozone concerns?",
+     options:["Nitrogen","CFC (Freon)","Helium","Propane"], correct:1},
+    {q:"This item usually needs how many core components to complete its main cycle?",
+     options:["2","3","4","6"], correct:2},
+    {q:"The efficiency of this item is often rated using which star-based system in India?",
+     options:["Energy Star only","BEE Star Rating","ISO Rating","ISI mark only"], correct:1},
+    {q:"This item typically requires which of these to be mounted outdoors for heat exchange?",
+     options:["A speaker unit","A condenser / outdoor unit","A filter tray","A battery pack"], correct:1},
+    {q:"Besides heat, what does this item typically remove from a room?",
+     options:["Odor only","Humidity / moisture","Sound","Light"], correct:1},
+    {q:"In its most common home version, the indoor unit is usually mounted where?",
+     options:["Floor","Wall, high up","Ceiling center","Outside window ledge"], correct:1},
+    {q:"What unit is commonly used to describe this item's cooling capacity?",
+     options:["Watts only","Tonnes","Decibels","Lumens"], correct:1},
+    {q:"Which season sees peak demand for this item across most of India?",
+     options:["Winter","Monsoon","Summer","Spring"], correct:2},
+    {q:"Today, this item is a common feature in which of these settings?",
+     options:["Only hospitals","Homes, offices, cars and malls","Only laboratories","Only data centers"], correct:1},
+  ]
+};
+
+const SAMPLE2 = {
+  itemName: "AC",
+  acceptedAnswers: "ac, air conditioning, vatanucoolak",
+  whisperMain: "Opens its mouth and says Tazza Hole",
+  whisperSub: "Opens its mouth and says Tazza Hole",
+  questions: [
+    {q:"Used Daily?",
+     options:["Yes, all 365 days nonstop","No","Only when guests arrive","Twice a day"], correct:1},
+    {q:"Is it cleaned?",
+     options:["Yes, regularly","Only when mom asks to clean","Only when it is giving foul smell","Not at all"], correct:0},
+    {q:"Does it make you feel awesome?",
+     options:["Sometimes and sometimes not","Only girlfriend/boyfriend can make feel awesome","No, it gives me weird feeling.","Is it Option D?"], correct:0},
+    {q:"Does it need all doors shut down before it works properly?",
+     options:["Yes","No, Partitioning will do","Yes for best effects","None of the above"], correct:2},
+    {q:"Is it divided into parts? If yes then how many?",
+     options:["Yes, two","No, single piece","Yes, very fine pieces","Yes, three pieces"], correct:3},
+    {q:"Ungli par nachta hai?",
+     options:["Yes but thandi jagah pr sikudne lagta hai","No, nachata hai","Yes but garm jagah pr fudakne lagta hai","None of the above"], correct:2},
+    {q:"Bimari me koi madad?",
+     options:["No","Han bohot sari","Ramban ilaj","Both b and c"], correct:0},
+    {q:"Is too much usage/consumption can cause harm?",
+     options:["Yes","No","Maybe","Not valid"], correct:0},
+    {q:"Sare brands ke ache hote hai?",
+     options:["Yes, sab ek jaise hote hai","No, usage dekh ke kharidna chahiye","No, khud analyse karke kharidna chahiye","Option B and C"], correct:3},
+    {q:"Gas se related hai?",
+     options:["Yes, for sure","No, bas foul smell nahi honi chahiye","None at all","Lifeline- Agar bhai abhi bhi sahi nahi bata paaya to..."], correct:0},
+  ]
+};
+
+const TOTAL_TOKENS = 3;
+const REQUIRED_PLAY_COUNT = 10;
+const LIBRARY_KEY = "quiz-library";
+
+/* ---------------- SETUP VIEW: question pool (dynamic count) ---------------- */
+let questionDrafts = []; // [{q, options:[4], correct}]
+const questionEditors = document.getElementById('questionEditors');
+
+function blankQuestion(){
+  return { q:'', options:['','','',''], correct:null };
+}
+
+function scrapeEditorsIntoDrafts(){
+  const nodes = document.querySelectorAll('.q-editor');
+  const drafts = [];
+  nodes.forEach(ed=>{
+    const qText = ed.querySelector('.qe-question').value;
+    const opts = Array.from(ed.querySelectorAll('.qe-option')).map(o=>o.value);
+    const correctRadio = ed.querySelector('.qe-correct:checked');
+    drafts.push({ q: qText, options: opts, correct: correctRadio ? parseInt(correctRadio.value) : null });
+  });
+  questionDrafts = drafts;
+}
+
+function renderQuestionEditors(){
+  let html = '';
+  questionDrafts.forEach((qd, i)=>{
+    html += `
+      <div class="q-editor" data-qi="${i}">
+        <div class="qe-header">
+          <div class="qe-title">QUESTION ${i+1}</div>
+          <button type="button" class="btn btn-outline-rose btn-sm" data-remove="${i}">Remove</button>
+        </div>
+        <div class="field">
+          <input type="text" class="qe-question" placeholder="Question text" value="${escapeAttr(qd.q)}">
+        </div>
+        ${[0,1,2,3].map(o=>`
+          <div class="opt-row">
+            <input type="radio" name="correct-${i}" class="qe-correct" value="${o}" ${qd.correct===o?'checked':''}>
+            <span class="opt-label">${String.fromCharCode(65+o)}</span>
+            <input type="text" class="qe-option" placeholder="Option ${String.fromCharCode(65+o)}" value="${escapeAttr(qd.options[o]||'')}">
+          </div>
+        `).join('')}
+      </div>
+    `;
+  });
+  questionEditors.innerHTML = html;
+  questionEditors.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      scrapeEditorsIntoDrafts();
+      const i = parseInt(btn.dataset.remove);
+      questionDrafts.splice(i,1);
+      renderQuestionEditors();
+    });
+  });
+}
+
+function escapeAttr(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function initDrafts(count){
+  questionDrafts = Array.from({length:count}, blankQuestion);
+  renderQuestionEditors();
+}
+initDrafts(10);
+
+document.getElementById('addQuestionBtn').addEventListener('click', ()=>{
+  scrapeEditorsIntoDrafts();
+  questionDrafts.push(blankQuestion());
+  renderQuestionEditors();
+  window.scrollTo({top: document.body.scrollHeight - 400, behavior:'smooth'});
+});
+
+function fillForm(data){
+  document.getElementById('itemName').value = data.itemName;
+  document.getElementById('acceptedAnswers').value = Array.isArray(data.acceptedAnswers) ? data.acceptedAnswers.join(', ') : data.acceptedAnswers;
+  document.getElementById('whisperMain').value = data.whisperMain;
+  document.getElementById('whisperSub').value = data.whisperSub || '';
+  questionDrafts = data.questions.map(qd => ({ q: qd.q, options: [...qd.options], correct: qd.correct }));
+  renderQuestionEditors();
+  clearErrors();
+}
+
+function clearForm(){
+  document.getElementById('itemName').value = '';
+  document.getElementById('acceptedAnswers').value = '';
+  document.getElementById('whisperMain').value = '';
+  document.getElementById('whisperSub').value = '';
+  initDrafts(10);
+  clearErrors();
+}
+
+function clearErrors(){
+  document.querySelectorAll('.field-error').forEach(el=>el.classList.remove('field-error'));
+  const banner = document.getElementById('errorBanner');
+  banner.style.display = 'none';
+  banner.textContent = '';
+}
+
+function showStatus(msg){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display = 'none'; }, 2800);
+}
+
+document.getElementById('loadSampleBtn').addEventListener('click', ()=>{
+  currentEditingId = null;
+  fillForm(SAMPLE);
+  updateEditingTag();
+});
+document.getElementById('loadSample2Btn').addEventListener('click', ()=>{
+  currentEditingId = null;
+  fillForm(SAMPLE2);
+  updateEditingTag();
+});
+document.getElementById('clearAllBtn').addEventListener('click', clearForm);
+document.getElementById('newQuizBtn').addEventListener('click', ()=>{
+  currentEditingId = null;
+  clearForm();
+  updateEditingTag();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ---------------- SAVE-TO-LIBRARY: no validation, just scrape whatever is typed ---------------- */
+function buildDraftFromForm(){
+  const itemNameEl = document.getElementById('itemName');
+  const acceptedEl = document.getElementById('acceptedAnswers');
+  const whisperMainEl = document.getElementById('whisperMain');
+  const whisperSubEl = document.getElementById('whisperSub');
+
+  const questions = [];
+  document.querySelectorAll('.q-editor').forEach(ed=>{
+    const qText = ed.querySelector('.qe-question').value;
+    const opts = Array.from(ed.querySelectorAll('.qe-option')).map(o=>o.value);
+    const correctRadio = ed.querySelector('.qe-correct:checked');
+    questions.push({
+      q: qText,
+      options: opts,
+      correct: correctRadio ? parseInt(correctRadio.value) : null
+    });
+  });
+
+  return {
+    itemName: itemNameEl.value.trim() || 'Untitled Item',
+    acceptedAnswers: acceptedEl.value.trim() ? acceptedEl.value.trim().toLowerCase().split(',').map(s=>s.trim()).filter(Boolean) : [],
+    whisperMain: whisperMainEl.value,
+    whisperSub: whisperSubEl.value.trim(),
+    questions
+  };
+}
+
+/* ---------------- START-SHOW: strict validation, from the live form ---------------- */
+function validateFormForStart(){
+  clearErrors();
+  const itemNameEl = document.getElementById('itemName');
+  const acceptedEl = document.getElementById('acceptedAnswers');
+  const whisperMainEl = document.getElementById('whisperMain');
+  const errors = [];
+
+  if(!itemNameEl.value.trim()){ errors.push('Item name is required to start the show.'); itemNameEl.classList.add('field-error'); }
+  if(!acceptedEl.value.trim()){ errors.push('At least one accepted final-guess answer is required.'); acceptedEl.classList.add('field-error'); }
+  if(!whisperMainEl.value.trim()){ errors.push('The Whisper riddle is required.'); whisperMainEl.classList.add('field-error'); }
+
+  const completeQuestions = [];
+  document.querySelectorAll('.q-editor').forEach((ed, i)=>{
+    const qText = ed.querySelector('.qe-question');
+    const opts = ed.querySelectorAll('.qe-option');
+    const correctRadio = ed.querySelector('.qe-correct:checked');
+
+    const textOk = qText.value.trim().length > 0;
+    const optsOk = Array.from(opts).every(o=>o.value.trim().length > 0);
+    const correctOk = !!correctRadio;
+
+    if(!textOk) qText.classList.add('field-error');
+    opts.forEach(o=>{ if(!o.value.trim()) o.classList.add('field-error'); });
+
+    if(textOk && optsOk && correctOk){
+      completeQuestions.push({
+        q: qText.value.trim(),
+        options: Array.from(opts).map(o=>o.value.trim()),
+        correct: parseInt(correctRadio.value)
+      });
+    }
+  });
+
+  if(completeQuestions.length < REQUIRED_PLAY_COUNT){
+    errors.push(`You need at least ${REQUIRED_PLAY_COUNT} fully complete questions to start the show (currently ${completeQuestions.length} complete).`);
+  }
+
+  if(errors.length){
+    const banner = document.getElementById('errorBanner');
+    banner.style.display = 'block';
+    banner.innerHTML = errors.map(e=>'• '+e).join('<br>');
+    return { ok:false };
+  }
+
+  return {
+    ok:true,
+    config: {
+      itemName: itemNameEl.value.trim(),
+      acceptedAnswers: acceptedEl.value.trim().toLowerCase().split(',').map(s=>s.trim()).filter(Boolean),
+      whisperMain: whisperMainEl.value,
+      whisperSub: document.getElementById('whisperSub').value.trim(),
+      questions: completeQuestions
+    }
+  };
+}
+
+/* ---------------- START-SHOW: strict validation, from a saved library entry ---------------- */
+function validateEntryForStart(entry){
+  clearErrors();
+  const errors = [];
+  if(!entry.itemName || !entry.itemName.trim()) errors.push('This quiz is missing an item name.');
+
+  const accepted = Array.isArray(entry.acceptedAnswers)
+    ? entry.acceptedAnswers
+    : String(entry.acceptedAnswers||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!accepted.length) errors.push('This quiz has no accepted final-guess answers.');
+  if(!entry.whisperMain || !entry.whisperMain.trim()) errors.push('This quiz is missing its Whisper riddle.');
+
+  const completeQuestions = (entry.questions||[]).filter(q =>
+    q.q && String(q.q).trim() &&
+    q.options && q.options.length===4 && q.options.every(o=>o && String(o).trim()) &&
+    q.correct !== null && q.correct !== undefined
+  );
+  if(completeQuestions.length < REQUIRED_PLAY_COUNT){
+    errors.push(`This quiz only has ${completeQuestions.length} fully complete question${completeQuestions.length===1?'':'s'} — at least ${REQUIRED_PLAY_COUNT} are needed to play.`);
+  }
+
+  if(errors.length){
+    const banner = document.getElementById('errorBanner');
+    banner.style.display = 'block';
+    banner.innerHTML = `• <strong>${escapeHtml(entry.itemName||'This quiz')}</strong> can't start yet:<br>` +
+      errors.map(e=>'&nbsp;&nbsp;• '+e).join('<br>');
+    return { ok:false };
+  }
+
+  return {
+    ok:true,
+    config: {
+      itemName: entry.itemName.trim(),
+      acceptedAnswers: accepted,
+      whisperMain: entry.whisperMain,
+      whisperSub: entry.whisperSub || '',
+      questions: completeQuestions
+    }
+  };
+}
+
+/* ---------------- LIBRARY (persistent storage) ---------------- */
+let library = [];
+let currentEditingId = null;
+
+async function loadLibrary(){
+  try{
+    const res = await window.storage.get(LIBRARY_KEY, false);
+    library = res && res.value ? JSON.parse(res.value) : [];
+  } catch(err){
+    library = [];
+  }
+  renderLibrary();
+}
+
+async function persistLibrary(){
+  try{
+    const result = await window.storage.set(LIBRARY_KEY, JSON.stringify(library), false);
+    if(!result) throw new Error('Storage write returned no result');
+    return true;
+  } catch(err){
+    alert('Could not save to your library right now — please try again.');
+    return false;
+  }
+}
+
+function updateEditingTag(){
+  const tag = document.getElementById('editingTag');
+  if(currentEditingId){
+    const entry = library.find(q=>q.id===currentEditingId);
+    tag.style.display = 'inline-block';
+    tag.textContent = 'Editing: ' + (entry ? entry.itemName : '...');
+  } else {
+    tag.style.display = 'none';
+  }
+  document.querySelectorAll('.lib-item').forEach(el=>{
+    el.classList.toggle('editing-active', el.dataset.id === currentEditingId);
+  });
+}
+
+function renderLibrary(){
+  const wrap = document.getElementById('libraryList');
+  if(!library.length){
+    wrap.innerHTML = '<div class="lib-empty">No saved quizzes yet. Fill in a quiz below and hit "Save to Library" to keep it for future episodes.</div>';
+    return;
+  }
+  const sorted = [...library].sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+  wrap.innerHTML = sorted.map(item=>{
+    const dt = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—';
+    return `
+      <div class="lib-item" data-id="${item.id}">
+        <div>
+          <div class="lib-item-name">${escapeHtml(item.itemName)}</div>
+          <div class="lib-item-meta">${item.questions.length} questions in pool · updated ${dt}</div>
+        </div>
+        <div class="lib-item-actions">
+          <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${item.id}">Edit</button>
+          <button class="btn btn-ghost btn-sm" data-action="clone" data-id="${item.id}">Clone</button>
+          <button class="btn btn-gold btn-sm" data-action="play" data-id="${item.id}">Load &amp; Play</button>
+          <button class="btn btn-outline-rose btn-sm" data-action="delete" data-id="${item.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  wrap.querySelectorAll('[data-action]').forEach(btn=>{
+    btn.addEventListener('click', onLibraryAction);
+  });
+  updateEditingTag();
+}
+
+function onLibraryAction(e){
+  const action = e.target.dataset.action;
+  const id = e.target.dataset.id;
+  const entry = library.find(q=>q.id===id);
+  if(!entry) return;
+
+  if(action === 'edit'){
+    currentEditingId = id;
+    fillForm(entry);
+    updateEditingTag();
+    window.scrollTo({top:0, behavior:'smooth'});
+  } else if(action === 'delete'){
+    const ok = confirm(`Delete "${entry.itemName}" from your quiz library? This can't be undone.`);
+    if(!ok) return;
+    library = library.filter(q=>q.id!==id);
+    if(currentEditingId === id) currentEditingId = null;
+    persistLibrary().then(()=>{ renderLibrary(); showStatus('Deleted.'); });
+  } else if(action === 'clone'){
+    const newId = 'quiz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const clone = {
+      id: newId,
+      itemName: entry.itemName + ' (Copy)',
+      acceptedAnswers: entry.acceptedAnswers,
+      whisperMain: entry.whisperMain,
+      whisperSub: entry.whisperSub,
+      questions: entry.questions.map(q=>({ q:q.q, options:[...q.options], correct:q.correct })),
+      updatedAt: Date.now()
+    };
+    library.push(clone);
+    persistLibrary().then(ok=>{
+      if(!ok) return;
+      renderLibrary();
+      currentEditingId = newId;
+      fillForm(clone);
+      updateEditingTag();
+      showStatus(`Cloned "${entry.itemName}" — edit the copy below.`);
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  } else if(action === 'play'){
+    const result = validateEntryForStart(entry);
+    if(!result.ok) return;
+    requestStartShowConfig(result.config);
+  }
+}
+
+document.getElementById('saveLibraryBtn').addEventListener('click', async ()=>{
+  clearErrors();
+  const built = buildDraftFromForm();
+
+  const saveBtn = document.getElementById('saveLibraryBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  if(currentEditingId && library.find(q=>q.id===currentEditingId)){
+    const idx2 = library.findIndex(q=>q.id===currentEditingId);
+    library[idx2] = { ...built, id: currentEditingId, updatedAt: Date.now() };
+  } else {
+    const newId = 'quiz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    library.push({ ...built, id: newId, updatedAt: Date.now() });
+    currentEditingId = newId;
+  }
+
+  const ok = await persistLibrary();
+  saveBtn.disabled = false;
+  saveBtn.textContent = '💾 Save to Library';
+  if(ok){
+    renderLibrary();
+    showStatus('Saved to library.');
+  }
+});
+
+/* ---------------- EXCEL EXPORT / IMPORT ---------------- */
+function exportLibraryToExcel(){
+  if(!library.length){
+    alert('Your library is empty — save at least one quiz before exporting.');
+    return;
+  }
+  const itemRows = library.map(q=>({
+    id: q.id,
+    itemName: q.itemName,
+    acceptedAnswers: Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers.join(', ') : q.acceptedAnswers,
+    whisperMain: q.whisperMain,
+    whisperSub: q.whisperSub || '',
+    updatedAt: q.updatedAt ? new Date(q.updatedAt).toISOString() : ''
+  }));
+  const questionRows = [];
+  library.forEach(q=>{
+    q.questions.forEach((qq, i)=>{
+      questionRows.push({
+        quizId: q.id,
+        itemName: q.itemName,
+        questionNumber: i+1,
+        questionText: qq.q,
+        optionA: qq.options[0] || '',
+        optionB: qq.options[1] || '',
+        optionC: qq.options[2] || '',
+        optionD: qq.options[3] || '',
+        correctOption: ['A','B','C','D'][qq.correct] || ''
+      });
+    });
+  });
+  try{
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemRows), 'Items');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(questionRows), 'Questions');
+    XLSX.writeFile(wb, 'find-me-if-you-can-library.xlsx');
+    showStatus('Exported library to Excel.');
+  } catch(err){
+    alert('Could not generate the Excel file. Please try again.');
+  }
+}
+
+function importLibraryFromExcel(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const itemsSheet = wb.Sheets['Items'];
+      const questionsSheet = wb.Sheets['Questions'];
+      if(!itemsSheet || !questionsSheet){
+        alert('This file is missing an "Items" or "Questions" sheet — make sure you\'re importing a file exported from this tool.');
+        return;
+      }
+      const itemRows = XLSX.utils.sheet_to_json(itemsSheet);
+      const questionRows = XLSX.utils.sheet_to_json(questionsSheet);
+
+      const letterToIndex = { A:0, B:1, C:2, D:3 };
+      const imported = itemRows.map(row=>{
+        const id = String(row.id || ('quiz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7)));
+        const myQuestions = questionRows
+          .filter(qr => String(qr.quizId) === String(row.id))
+          .sort((a,b)=> (a.questionNumber||0) - (b.questionNumber||0))
+          .map(qr => ({
+            q: String(qr.questionText || ''),
+            options: [String(qr.optionA||''), String(qr.optionB||''), String(qr.optionC||''), String(qr.optionD||'')],
+            correct: letterToIndex[String(qr.correctOption||'').trim().toUpperCase()] ?? null
+          }));
+        return {
+          id,
+          itemName: String(row.itemName || 'Untitled Item'),
+          acceptedAnswers: String(row.acceptedAnswers || '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
+          whisperMain: String(row.whisperMain || ''),
+          whisperSub: String(row.whisperSub || ''),
+          questions: myQuestions,
+          updatedAt: Date.now()
+        };
+      });
+
+      if(!imported.length){
+        alert('No quizzes found in that file.');
+        return;
+      }
+
+      imported.forEach(newItem=>{
+        const existingIdx = library.findIndex(q=>q.id===newItem.id);
+        if(existingIdx >= 0) library[existingIdx] = newItem;
+        else library.push(newItem);
+      });
+
+      persistLibrary().then(ok=>{
+        if(ok){
+          renderLibrary();
+          showStatus(`Imported ${imported.length} quiz${imported.length===1?'':'zes'}.`);
+        }
+      });
+    } catch(err){
+      alert('Could not read that Excel file. Please make sure it\'s a valid .xlsx export from this tool.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('exportExcelBtn').addEventListener('click', exportLibraryToExcel);
+document.getElementById('importExcelBtn').addEventListener('click', ()=>{
+  document.getElementById('importExcelInput').click();
+});
+document.getElementById('importExcelInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) importLibraryFromExcel(file);
+  e.target.value = '';
+});
+
+loadLibrary();
+
+/* ---------------- QUESTION SELECTION SCREEN (pool > 10) ---------------- */
+let pendingConfig = null; // full pool awaiting selection
+let selectedIndices = new Set();
+
+function requestStartShowConfig(built){
+  if(built.questions.length === REQUIRED_PLAY_COUNT){
+    startShowFromConfig(built);
+    return;
+  }
+  openSelectionScreen(built);
+}
+
+function openSelectionScreen(built){
+  pendingConfig = built;
+  selectedIndices = new Set();
+  document.getElementById('setupView').style.display = 'none';
+  document.getElementById('playView').style.display = 'none';
+  document.getElementById('selectView').style.display = 'block';
+  document.getElementById('modePill').textContent = 'SELECT 10 QUESTIONS';
+  renderSelectionList();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function renderSelectionList(){
+  const list = document.getElementById('selectList');
+  list.innerHTML = pendingConfig.questions.map((q,i)=>`
+    <label class="select-item ${(!selectedIndices.has(i) && selectedIndices.size>=REQUIRED_PLAY_COUNT) ? 'disabled-check' : ''}">
+      <input type="checkbox" data-i="${i}" ${selectedIndices.has(i)?'checked':''} ${(!selectedIndices.has(i) && selectedIndices.size>=REQUIRED_PLAY_COUNT) ? 'disabled' : ''}>
+      <span class="select-item-text"><span class="select-item-num">Q${i+1}</span>${escapeHtml(q.q)}</span>
+    </label>
+  `).join('');
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const i = parseInt(cb.dataset.i);
+      if(cb.checked) selectedIndices.add(i); else selectedIndices.delete(i);
+      renderSelectionList();
+      updateSelectCounter();
+    });
+  });
+  updateSelectCounter();
+}
+
+function updateSelectCounter(){
+  const el = document.getElementById('selectCounter');
+  el.textContent = `Selected: ${selectedIndices.size} / ${REQUIRED_PLAY_COUNT}`;
+  el.classList.toggle('complete', selectedIndices.size === REQUIRED_PLAY_COUNT);
+  document.getElementById('confirmSelectionBtn').disabled = selectedIndices.size !== REQUIRED_PLAY_COUNT;
+}
+
+document.getElementById('confirmSelectionBtn').addEventListener('click', ()=>{
+  const finalQuestions = [...selectedIndices].sort((a,b)=>a-b).map(i=>pendingConfig.questions[i]);
+  const finalConfig = { ...pendingConfig, questions: finalQuestions };
+  document.getElementById('selectView').style.display = 'none';
+  startShowFromConfig(finalConfig);
+});
+
+document.getElementById('backToSetupFromSelectBtn').addEventListener('click', ()=>{
+  document.getElementById('selectView').style.display = 'none';
+  document.getElementById('setupView').style.display = 'block';
+  document.getElementById('modePill').textContent = 'SET-UP MODE';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ---------------- GAME STATE ---------------- */
+let config = null;
+let idx = 0;
+let correctCount = 0;
+let tokensUsedForReveal = 0;
+let answeredState = [];
+let currentAnswered = false;
+let currentRevealed = false;
+
+document.getElementById('startShowBtn').addEventListener('click', ()=>{
+  const result = validateFormForStart();
+  if(!result.ok) return;
+  requestStartShowConfig(result.config);
+});
+
+function startShowFromConfig(built){
+  config = built;
+  answeredState = new Array(config.questions.length).fill(null);
+  idx = 0; correctCount = 0; tokensUsedForReveal = 0;
+  document.getElementById('setupView').style.display = 'none';
+  document.getElementById('selectView').style.display = 'none';
+  document.getElementById('playView').style.display = 'block';
+  document.getElementById('quiz-section').style.display = 'block';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('modePill').textContent = 'ON AIR';
+
+  const shayariEl = document.getElementById('shayariText');
+  shayariEl.innerHTML = escapeHtml(config.whisperMain) + (config.whisperSub ? `<span class="en">${escapeHtml(config.whisperSub)}</span>` : '');
+
+  renderQuestion();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('newItemBtn').addEventListener('click', ()=>{
+  document.getElementById('playView').style.display = 'none';
+  document.getElementById('setupView').style.display = 'block';
+  document.getElementById('modePill').textContent = 'SET-UP MODE';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ---------------- RENDER HELPERS ---------------- */
+function renderTokens(){
+  const row = document.getElementById('tokenRow');
+  let html = '<span>TOKENS</span>';
+  for(let i=0;i<TOTAL_TOKENS;i++){
+    html += `<div class="diya ${i < (TOTAL_TOKENS - tokensUsedForReveal) ? '' : 'spent'}"></div>`;
+  }
+  row.innerHTML = html;
+}
+
+function renderDots(){
+  const wrap = document.getElementById('progressDots');
+  wrap.innerHTML = config.questions.map((_,i)=>{
+    let cls = 'dot';
+    if(answeredState[i]==='correct') cls += ' correct';
+    if(answeredState[i]==='wrong') cls += ' wrong';
+    if(i===idx) cls += ' current';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+}
+
+function renderScore(){
+  document.getElementById('scorePill').textContent = (correctCount*5) + ' pts';
+}
+
+function renderQuestion(){
+  currentAnswered = false;
+  currentRevealed = false;
+  const item = config.questions[idx];
+  const card = document.getElementById('qCard');
+  card.innerHTML = `
+    <div class="q-number">
+      <span>QUESTION ${idx+1} OF ${config.questions.length}</span>
+    </div>
+    <div class="q-text">${escapeHtml(item.q)}</div>
+    <div class="options" id="optionsWrap">
+      ${item.options.map((opt,i)=>`<button class="option" data-i="${i}">${escapeHtml(opt)}</button>`).join('')}
+    </div>
+    <div class="feedback-row" id="feedbackRow"></div>
+  `;
+  document.querySelectorAll('.option').forEach(btn=>{
+    btn.addEventListener('click', onOptionClick);
+  });
+  renderDots();
+  renderTokens();
+  renderScore();
+}
+
+function onOptionClick(e){
+  if(currentAnswered) return;
+  currentAnswered = true;
+  const chosen = parseInt(e.target.dataset.i);
+  const item = config.questions[idx];
+  const isCorrect = chosen === item.correct;
+
+  document.querySelectorAll('.option').forEach(btn=>{
+    const i = parseInt(btn.dataset.i);
+    btn.disabled = true;
+    if(i === chosen && isCorrect) btn.classList.add('correct-answer');
+    if(i === chosen && !isCorrect) btn.classList.add('wrong-answer');
+    if(i !== chosen) btn.classList.add('dim');
+  });
+
+  answeredState[idx] = isCorrect ? 'correct' : 'wrong';
+  if(isCorrect) correctCount++;
+  renderDots();
+  renderScore();
+
+  const row = document.getElementById('feedbackRow');
+  const tokensLeft = TOTAL_TOKENS - tokensUsedForReveal;
+  if(isCorrect){
+    row.innerHTML = `<span class="feedback-tag correct">✓ CORRECT · +5 PTS</span>
+      <button class="btn btn-gold" id="nextBtn">Next Question →</button>`;
+  } else {
+    row.innerHTML = `<span class="feedback-tag wrong">✗ WRONG</span>
+      <div style="display:flex; gap:10px;">
+        ${tokensLeft > 0 ? `<button class="btn btn-ghost" id="revealBtn">Use Token to Reveal (${tokensLeft} left)</button>` : ''}
+        <button class="btn btn-gold" id="nextBtn">Next Question →</button>
+      </div>`;
+    if(tokensLeft > 0){
+      document.getElementById('revealBtn').addEventListener('click', onReveal);
+    }
+  }
+  document.getElementById('nextBtn').addEventListener('click', goNext);
+}
+
+function onReveal(){
+  if(currentRevealed) return;
+  currentRevealed = true;
+  tokensUsedForReveal++;
+  renderTokens();
+  const item = config.questions[idx];
+  document.querySelectorAll('.option').forEach(btn=>{
+    const i = parseInt(btn.dataset.i);
+    if(i === item.correct) btn.classList.add('correct-answer');
+  });
+  const revealBtn = document.getElementById('revealBtn');
+  if(revealBtn) revealBtn.remove();
+}
+
+function goNext(){
+  idx++;
+  if(idx >= config.questions.length){
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function tierFor(count){
+  if(count >= 9) return {label:'9–10 correct', reward:'CCBS Gift Hamper worth ₹1499'};
+  if(count >= 7) return {label:'7–8 correct', reward:'CCBS Gift Hamper worth ₹999'};
+  if(count >= 5) return {label:'5–6 correct', reward:'CCBS Gift Hamper worth ₹499'};
+  return {label:'0–4 correct', reward:'No reward'};
+}
+
+function showResults(){
+  document.getElementById('quiz-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('modePill').textContent = 'ROUND OVER';
+
+  const tier = tierFor(correctCount);
+  const unusedTokens = TOTAL_TOKENS - tokensUsedForReveal;
+
+  document.getElementById('resultSummary').innerHTML = `
+    <div class="q-number">FINAL MCQ TALLY</div>
+    <div class="q-text">${correctCount} / ${config.questions.length} correct — ${correctCount*5} points</div>
+    <div class="timer-note">Unused tokens: ${unusedTokens} · Tier reached: ${tier.reward}</div>
+  `;
+
+  const tiers = [
+    {range:'0–4 correct', reward:'No reward'},
+    {range:'5–6 correct', reward:'CCBS Gift Hamper worth ₹499'},
+    {range:'7–8 correct', reward:'CCBS Gift Hamper worth ₹999'},
+    {range:'9–10 correct', reward:'CCBS Gift Hamper worth ₹1499'},
+  ];
+  const table = document.getElementById('tierTable');
+  table.querySelectorAll('tr.tier-row').forEach(r=>r.remove());
+  tiers.forEach(t=>{
+    const row = document.createElement('tr');
+    row.classList.add('tier-row');
+    if(t.range === tier.label) row.classList.add('achieved');
+    row.innerHTML = `<td>${t.range}</td><td>${t.reward}</td>`;
+    table.appendChild(row);
+  });
+
+  const finalArea = document.getElementById('finalGuessArea');
+  if(correctCount >= 5){
+    const maxAttempts = 1 + unusedTokens;
+    finalArea.innerHTML = `
+      <div class="section-label" style="margin-top:30px;">Final Guess — Unlocked</div>
+      <div class="final-card">
+        <div class="q-text" style="margin-bottom:0;">Name the item. You have <strong>${maxAttempts}</strong> attempt${maxAttempts>1?'s':''} (1 base + ${unusedTokens} unused token${unusedTokens===1?'':'s'}).</div>
+        <div class="final-input-row">
+          <input type="text" id="guessInput" placeholder="Type your final guess...">
+          <button class="btn btn-gold" id="guessBtn">Lock In Guess</button>
+        </div>
+        <div id="attemptsNote" class="timer-note" style="margin-top:10px;">Attempts remaining: ${maxAttempts}</div>
+        <div id="finalOutcome"></div>
+      </div>
+    `;
+    let attemptsLeft = maxAttempts;
+    document.getElementById('guessBtn').addEventListener('click', ()=>{
+      const val = document.getElementById('guessInput').value.trim().toLowerCase();
+      attemptsLeft--;
+      const outcome = document.getElementById('finalOutcome');
+      if(config.acceptedAnswers.includes(val)){
+        outcome.innerHTML = `
+          <div class="win-banner">
+            <div class="timer-note">FINAL ANSWER CORRECT</div>
+            <div class="amount">₹5000 Cash</div>
+            <div class="timer-note">Plus CCBS Gift Hamper worth ₹1499 · Total score: ${correctCount*5 + 50} pts</div>
+          </div>`;
+        document.getElementById('guessBtn').disabled = true;
+        document.getElementById('guessInput').disabled = true;
+      } else if(attemptsLeft <= 0){
+        outcome.innerHTML = `<div class="lose-banner">Out of attempts — the item was <strong>${escapeHtml(config.itemName)}</strong>. ${tier.reward} still stands.</div>`;
+        document.getElementById('guessBtn').disabled = true;
+        document.getElementById('guessInput').disabled = true;
+      } else {
+        document.getElementById('attemptsNote').textContent = `Not quite — attempts remaining: ${attemptsLeft}`;
+        document.getElementById('guessInput').value = '';
+      }
+    });
+  } else {
+    finalArea.innerHTML = `
+      <div class="locked-note" style="margin-top:24px;">
+        Final guess locked — minimum 5 correct MCQs required to unlock. Round ends here with ${tier.reward}.
+      </div>`;
+  }
+}
+</script>
+
+</body>
+</html>
