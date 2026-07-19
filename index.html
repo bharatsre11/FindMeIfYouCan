@@ -275,6 +275,9 @@
         <span id="editingTag" class="editing-tag" style="display:none;"></span>
       </div>
       <div id="libraryList"></div>
+      <div id="storageWarning" class="error-banner" style="display:none; margin-top:12px;">
+        ⚠️ This browser is blocking local storage (common cause: Safari's "Block All Cookies" setting). Your quizzes will still work for this visit, but won't be saved once you close the tab. On iPhone: Settings → Safari → turn OFF "Block All Cookies", then reload this page.
+      </div>
       <div class="btn-row" style="margin-top:12px;">
         <button class="btn btn-ghost btn-sm" id="newQuizBtn">+ New Quiz</button>
         <button class="btn btn-ghost btn-sm" id="exportExcelBtn">⬇️ Export to Excel</button>
@@ -330,6 +333,7 @@
       <button class="btn btn-ghost" id="saveLibraryBtn">💾 Save to Library</button>
       <button class="btn btn-ghost" id="loadSampleBtn">Load Sample (Air Conditioning)</button>
       <button class="btn btn-ghost" id="loadSample2Btn">Load Sample 2 (AC — Fun Edition)</button>
+      <button class="btn btn-ghost" id="loadSample3Btn">Load Sample 3 (Mob)</button>
       <button class="btn btn-outline-rose" id="clearAllBtn">Clear Fields</button>
     </div>
   </div>
@@ -449,6 +453,35 @@ const SAMPLE2 = {
   ]
 };
 
+const SAMPLE3 = {
+  itemName: "Mob",
+  acceptedAnswers: "mob, floor cloth, pocha",
+  whisperMain: "Na meri koi manzil hai, na koi safar mera,\nPar sukoon chhod jaana hi inaam mera.",
+  whisperSub: "",
+  questions: [
+    {q:"Mera kaam kab shuru hota hai?",
+     options:["Khana khane ke baad","Sabse pehle yaad, sabse baad mein istemal","Sone ke baad","Nahane ke baad"], correct:1},
+    {q:"Main sabse zyada kya dekhta hoon?",
+     options:["Hawa","Aasman","Books","Nishan"], correct:3},
+    {q:"Generally, main kaha milta hoon?",
+     options:["Chhat Par","Bed Par","Tanki Par","Diwar Par"], correct:2},
+    {q:"Mera asli kaam tab dikhta hai jab..",
+     options:["Kamre ki kundli lagne par","Light Jane par","Barish aane par","Toofan Aane Par"], correct:3},
+    {q:"Main aksar kis cheez ka saathi hota hoon?",
+     options:["Water ka","Sofa ka","Bed ka","TV ka"], correct:0},
+    {q:"Mujhe kaam khatam hone ke baad log aksar kya karte hain?",
+     options:["Phen lete h","Yuhi kahi bhi fek dete h","Sukhne chod dete h","kahi Aur istemal kar lete h"], correct:2},
+    {q:"Main sabse zyada kis waqt yaad aata hoon?",
+     options:["Exame time","When guest are coming","On Birthdays","During match"], correct:1},
+    {q:"Me kis chij ka kam tamam kar deta hun?",
+     options:["Boreness","Hunger","Spots","Heat"], correct:2},
+    {q:"Mere bina kya adhura lag sakta hai?",
+     options:["Final touch","Honeymoon ka kamra","Food","Hotel"], correct:0},
+    {q:"Main har din fade/kam hota hun, aur...",
+     options:["Durso ko b fade kr deta hun","Dusron ko shine krata hu","Sabko khush kr deta hun hasa ke","Thandak deta hun"], correct:1},
+  ]
+};
+
 const TOTAL_TOKENS = 3;
 const REQUIRED_PLAY_COUNT = 10;
 const LIBRARY_KEY = "quiz-library";
@@ -564,6 +597,11 @@ document.getElementById('loadSampleBtn').addEventListener('click', ()=>{
 document.getElementById('loadSample2Btn').addEventListener('click', ()=>{
   currentEditingId = null;
   fillForm(SAMPLE2);
+  updateEditingTag();
+});
+document.getElementById('loadSample3Btn').addEventListener('click', ()=>{
+  currentEditingId = null;
+  fillForm(SAMPLE3);
   updateEditingTag();
 });
 document.getElementById('clearAllBtn').addEventListener('click', clearForm);
@@ -704,23 +742,56 @@ function validateEntryForStart(entry){
 let library = [];
 let currentEditingId = null;
 
-async function loadLibrary(){
+let storageAvailable = true;
+function checkStorageAvailability(){
   try{
-    const raw = localStorage.getItem(LIBRARY_KEY);
-    library = raw ? JSON.parse(raw) : [];
+    const testKey = '__fmiyc_test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
   } catch(err){
+    return false;
+  }
+}
+
+function showStorageWarningIfNeeded(){
+  const banner = document.getElementById('storageWarning');
+  if(!storageAvailable){
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+async function loadLibrary(){
+  storageAvailable = checkStorageAvailability();
+  if(storageAvailable){
+    try{
+      const raw = localStorage.getItem(LIBRARY_KEY);
+      library = raw ? JSON.parse(raw) : [];
+    } catch(err){
+      library = [];
+    }
+  } else {
     library = [];
   }
+  showStorageWarningIfNeeded();
   renderLibrary();
 }
 
 async function persistLibrary(){
+  if(!storageAvailable){
+    // Storage is blocked — keep working in-memory for this session, just don't pretend it's saved permanently.
+    showStorageWarningIfNeeded();
+    return true;
+  }
   try{
     localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
     return true;
   } catch(err){
-    alert('Could not save to your library right now — your browser may be blocking local storage (e.g. private/incognito mode). Please try again in normal browsing mode.');
-    return false;
+    storageAvailable = false;
+    showStorageWarningIfNeeded();
+    return true;
   }
 }
 
