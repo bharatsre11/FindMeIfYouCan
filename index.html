@@ -209,12 +209,20 @@
   .option:disabled{cursor:default;}
   .option.correct-answer{border-color:var(--green); background:rgba(62,207,142,0.1); color:var(--green);}
   .option.wrong-answer{border-color:var(--red); background:rgba(255,93,93,0.1); color:var(--red);}
+  .option.marked{border-color:var(--gold); background:rgba(244,185,66,0.15); color:var(--gold);}
   .option.dim{opacity:0.45;}
 
   .feedback-row{display:flex; align-items:center; justify-content:space-between; margin-top:18px; flex-wrap:wrap; gap:10px;}
   .feedback-tag{font-family:var(--mono); font-size:12px; letter-spacing:0.05em;}
   .feedback-tag.correct{color:var(--green);}
   .feedback-tag.wrong{color:var(--red);}
+  .feedback-tag.marked{color:var(--gold);}
+  .sound-toggle{
+    font-family:var(--mono); font-size:12px; color:var(--muted);
+    border:1px solid var(--card-edge); background:transparent;
+    padding:5px 12px; border-radius:20px; cursor:pointer;
+  }
+  .sound-toggle.on{color:var(--gold); border-color:var(--gold-dim);}
   .timer-note{font-family:var(--mono); font-size:11px; color:var(--muted);}
 
   .tier-table{width:100%; border-collapse:collapse; margin-top:14px; font-size:14px;}
@@ -367,6 +375,7 @@
       <div class="status-bar">
         <div class="progress-dots" id="progressDots"></div>
         <div class="tokens" id="tokenRow"></div>
+        <button class="sound-toggle on" id="soundToggle">🔊 Sound On</button>
         <div class="score-pill" id="scorePill">0 pts</div>
       </div>
       <div class="q-card" id="qCard"></div>
@@ -1089,7 +1098,182 @@ document.getElementById('backToSetupFromSelectBtn').addEventListener('click', ()
 });
 
 /* ---------------- GAME STATE ---------------- */
+/* ---------------- SOUND ENGINE (synthesized — no audio files needed) ---------------- */
+let soundEnabled = true;
+let audioCtx = null;
+
+function ensureAudio(){
+  if(!soundEnabled) return null;
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(err){ audioCtx = null; }
+  }
+  if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  return audioCtx;
+}
+
+/* Lock-in: ~1.2s suspenseful riser with a punchy opening hit — low pulsing tone + filtered noise sweep */
+function playLockInSound(){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const t = ctx.currentTime;
+  const dur = 1.2;
+
+  // Punchy opening hit — gives it weight instead of just fading in
+  const hit = ctx.createOscillator();
+  hit.type = 'sine';
+  hit.frequency.setValueAtTime(160, t);
+  hit.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+  const hitGain = ctx.createGain();
+  hitGain.gain.setValueAtTime(0.5, t);
+  hitGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  hit.connect(hitGain); hitGain.connect(ctx.destination);
+  hit.start(t); hit.stop(t + 0.24);
+
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(130, t);
+  osc.frequency.linearRampToValueAtTime(175, t + dur);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.linearRampToValueAtTime(0.34, t + 0.18);
+  gain.gain.setValueAtTime(0.34, t + dur - 0.25);
+  gain.gain.linearRampToValueAtTime(0.0001, t + dur);
+
+  const lfo = ctx.createOscillator();
+  lfo.frequency.setValueAtTime(5.5, t);
+  lfo.frequency.linearRampToValueAtTime(9, t + dur);
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.setValueAtTime(0.14, t);
+  lfo.connect(lfoGain); lfoGain.connect(gain.gain);
+
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t); lfo.start(t);
+  osc.stop(t + dur); lfo.stop(t + dur);
+
+  const bufferSize = Math.floor(ctx.sampleRate * dur);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++){ data[i] = Math.random()*2-1; }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(280, t);
+  filter.frequency.linearRampToValueAtTime(1100, t + dur);
+  filter.Q.value = 0.8;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.0001, t);
+  noiseGain.gain.linearRampToValueAtTime(0.13, t + dur * 0.75);
+  noiseGain.gain.linearRampToValueAtTime(0.0001, t + dur);
+  noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(ctx.destination);
+  noise.start(t); noise.stop(t + dur);
+}
+
+function playCorrectSound(){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const t = ctx.currentTime;
+  const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — a little "charm" arpeggio
+  notes.forEach((freq, i)=>{
+    const start = t + i * 0.09;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(start); osc.stop(start + 0.36);
+  });
+}
+
+/* Wrong: ~1.8s dramatic descending "sad trombone" — layered detuned sawtooths, held final note with vibrato */
+function playWrongSound(){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const t = ctx.currentTime;
+  const notes = [392.00, 369.99, 349.23, 311.13]; // G4, F#4, F4, Eb4 — descending, sad
+  const step = 0.36;
+  notes.forEach((freq, i)=>{
+    const start = t + i * step;
+    const isLast = i === notes.length - 1;
+    const noteDur = isLast ? 0.75 : step + 0.05;
+
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc2.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, start);
+    osc2.frequency.setValueAtTime(freq * 0.995, start);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(0.15, start + 0.04);
+    gain.gain.setValueAtTime(0.15, start + noteDur * 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + noteDur);
+
+    if(isLast){
+      const vibrato = ctx.createOscillator();
+      vibrato.frequency.setValueAtTime(5, start);
+      const vibratoGain = ctx.createGain();
+      vibratoGain.gain.setValueAtTime(6, start);
+      vibrato.connect(vibratoGain); vibratoGain.connect(osc.frequency);
+      vibrato.start(start); vibrato.stop(start + noteDur);
+    }
+
+    osc.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+    osc.start(start); osc.stop(start + noteDur + 0.05);
+    osc2.start(start); osc2.stop(start + noteDur + 0.05);
+  });
+}
+
+/* Token use: bright heroic "life saved" sting — quick ascending run into a sustained sparkle */
+function playTokenSound(){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const t = ctx.currentTime;
+  const runNotes = [392.00, 523.25, 659.25, 783.99, 1046.50]; // G4 - C6 ascending
+  runNotes.forEach((freq, i)=>{
+    const start = t + i * 0.07;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(start); osc.stop(start + 0.32);
+  });
+  const chordStart = t + runNotes.length * 0.07;
+  [1046.50, 1318.51].forEach(freq=>{
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, chordStart);
+    gain.gain.setValueAtTime(0.0001, chordStart);
+    gain.gain.linearRampToValueAtTime(0.16, chordStart + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, chordStart + 0.5);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(chordStart); osc.stop(chordStart + 0.52);
+  });
+}
+
+function wireSoundToggle(){
+  const btn = document.getElementById('soundToggle');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    soundEnabled = !soundEnabled;
+    btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+    btn.classList.toggle('on', soundEnabled);
+    if(soundEnabled) ensureAudio();
+  });
+}
+
 let config = null;
+wireSoundToggle();
 let idx = 0;
 let correctCount = 0;
 let tokensUsedForReveal = 0;
@@ -1159,9 +1343,12 @@ function renderScore(){
   document.getElementById('scorePill').textContent = (correctCount*5) + ' pts';
 }
 
+let currentChosen = null;
+
 function renderQuestion(){
   currentAnswered = false;
   currentRevealed = false;
+  currentChosen = null;
   const item = config.questions[idx];
   const card = document.getElementById('qCard');
   card.innerHTML = `
@@ -1182,25 +1369,45 @@ function renderQuestion(){
   renderScore();
 }
 
+/* Step 1: contestant marks a choice — locks it in as yellow, does NOT reveal right/wrong yet */
 function onOptionClick(e){
-  if(currentAnswered) return;
-  currentAnswered = true;
-  const chosen = parseInt(e.target.dataset.i);
-  const item = config.questions[idx];
-  const isCorrect = chosen === item.correct;
+  if(currentChosen !== null || currentAnswered) return;
+  currentChosen = parseInt(e.target.dataset.i);
+  playLockInSound();
 
   document.querySelectorAll('.option').forEach(btn=>{
     const i = parseInt(btn.dataset.i);
     btn.disabled = true;
-    if(i === chosen && isCorrect) btn.classList.add('correct-answer');
-    if(i === chosen && !isCorrect) btn.classList.add('wrong-answer');
-    if(i !== chosen) btn.classList.add('dim');
+    if(i === currentChosen) btn.classList.add('marked');
+    else btn.classList.add('dim');
+  });
+
+  const row = document.getElementById('feedbackRow');
+  row.innerHTML = `<span class="feedback-tag marked">● ANSWER LOCKED IN</span>
+    <button class="btn btn-gold" id="revealAnswerBtn">Reveal Answer ▶</button>`;
+  document.getElementById('revealAnswerBtn').addEventListener('click', revealAnswer);
+}
+
+/* Step 2: host taps Reveal — this is what actually shows green/red and plays correct/wrong sound */
+function revealAnswer(){
+  if(currentAnswered) return;
+  currentAnswered = true;
+  const item = config.questions[idx];
+  const isCorrect = currentChosen === item.correct;
+
+  document.querySelectorAll('.option').forEach(btn=>{
+    const i = parseInt(btn.dataset.i);
+    if(i === currentChosen){
+      btn.classList.remove('marked');
+      btn.classList.add(isCorrect ? 'correct-answer' : 'wrong-answer');
+    }
   });
 
   answeredState[idx] = isCorrect ? 'correct' : 'wrong';
   if(isCorrect) correctCount++;
   renderDots();
   renderScore();
+  if(isCorrect) playCorrectSound(); else playWrongSound();
 
   const row = document.getElementById('feedbackRow');
   const tokensLeft = TOTAL_TOKENS - tokensUsedForReveal;
@@ -1225,6 +1432,7 @@ function onReveal(){
   currentRevealed = true;
   tokensUsedForReveal++;
   renderTokens();
+  playTokenSound();
   const item = config.questions[idx];
   document.querySelectorAll('.option').forEach(btn=>{
     const i = parseInt(btn.dataset.i);
@@ -1242,6 +1450,7 @@ function goNext(){
     renderQuestion();
   }
 }
+
 
 function tierFor(count){
   if(count >= 9) return {label:'9–10 correct', reward:'CCBS Gift Hamper worth ₹1499'};
